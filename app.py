@@ -1,13 +1,15 @@
 # ========================================
-# DAVBEL AI - COMPLETE CHATBOT APP
-# Gemini-Style UI with Supabase Backend
+# DAVBEL AI - GROQ POWERED + MOBILE OPTIMIZED
+# No limits, Real app feel!
 # ========================================
 
-# INSTALLATION (Run this first in a cell):
-# !pip install streamlit google-generativeai supabase python-dotenv
+# REQUIREMENTS (update requirements.txt):
+# streamlit==1.52.2
+# groq==0.11.0
+# supabase==2.27.0
 
 import streamlit as st
-import google.generativeai as genai
+from groq import Groq
 from supabase import create_client, Client
 from datetime import datetime
 import hashlib
@@ -17,18 +19,16 @@ import re
 # CONFIGURATION
 # ========================================
 
-# Gemini API Key
-GEMINI_API_KEY = "AIzaSyA_J6kV5z19e4RyjpysjnUd5nwEkpg07Ik"  # Replace with your Gemini API key
+# Groq API Key (FREE UNLIMITED!)
+GROQ_API_KEY = "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"  # Replace with your Groq API key
 
 # Supabase Configuration
 SUPABASE_URL = "https://azvhzsbreshqospqaybt.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6dmh6c2JyZXNocW9zcHFheWJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4NTIxOTUsImV4cCI6MjA4MjQyODE5NX0.KkbkDVwRkY0iF9gEuiT0FGl5R4YV7Ee5fnZHd0_VfbY"
 
-# Initialize Supabase client
+# Initialize clients
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# Configure Gemini
-genai.configure(api_key=GEMINI_API_KEY)
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 # ========================================
 # HELPER FUNCTIONS
@@ -46,17 +46,14 @@ def validate_email(email: str) -> bool:
 def register_user(username: str, email: str, password: str):
     """Register a new user in Supabase"""
     try:
-        # Check if username exists
         response = supabase.table('users').select('*').eq('username', username).execute()
         if response.data:
             return False, "Username already exists!"
         
-        # Check if email exists
         response = supabase.table('users').select('*').eq('email', email).execute()
         if response.data:
             return False, "Email already registered!"
         
-        # Create user
         user_data = {
             'username': username,
             'email': email,
@@ -146,7 +143,6 @@ def update_conversation_title(conversation_id: int, title: str):
 
 def generate_chat_title(first_message: str) -> str:
     """Generate a short title from the first message"""
-    # Take first 5 words or 40 characters, whichever is shorter
     words = first_message.split()[:5]
     title = ' '.join(words)
     if len(title) > 40:
@@ -156,15 +152,40 @@ def generate_chat_title(first_message: str) -> str:
 def delete_conversation(conversation_id: int):
     """Delete a conversation and all its messages"""
     try:
-        # Delete messages first
         supabase.table('messages').delete().eq('conversation_id', conversation_id).execute()
-        # Delete conversation
         supabase.table('conversations').delete().eq('id', conversation_id).execute()
     except Exception as e:
         st.error(f"Error deleting conversation: {str(e)}")
 
+def chat_with_groq(messages_history, user_message):
+    """Send message to Groq AI and get response"""
+    try:
+        # Build message format for Groq
+        groq_messages = []
+        for msg in messages_history:
+            groq_messages.append({
+                "role": "user" if msg['role'] == 'user' else "assistant",
+                "content": msg['content']
+            })
+        groq_messages.append({"role": "user", "content": user_message})
+        
+        # Call Groq API
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",  # Fast and smart!
+            messages=groq_messages,
+            temperature=0.7,
+            max_tokens=2000,
+            top_p=1,
+            stream=False
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        return f"Error: {str(e)}"
+
 # ========================================
-# PAGE CONFIGURATION
+# PAGE CONFIGURATION - MOBILE OPTIMIZED
 # ========================================
 
 st.set_page_config(
@@ -175,84 +196,105 @@ st.set_page_config(
 )
 
 # ========================================
-# CUSTOM CSS - GEMINI-STYLE UI
+# MOBILE-OPTIMIZED CSS
 # ========================================
 
 st.markdown("""
     <style>
-    /* Main App Styling */
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Mobile-first design */
     .main {
         background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 100%);
         color: #ffffff;
+        padding: 0 !important;
+        max-width: 100% !important;
     }
     
-    /* Logo Styling */
+    /* Mobile optimized container */
+    .block-container {
+        padding: 1rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Logo - Mobile friendly */
     .logo-container {
         text-align: center;
-        padding: 20px;
+        padding: 15px;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        margin-bottom: 20px;
+        border-radius: 15px;
+        margin-bottom: 15px;
     }
     
     .logo {
-        font-size: 80px;
+        font-size: 60px;
         font-weight: bold;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        text-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
     }
     
     .app-title {
-        font-size: 36px;
+        font-size: 28px;
         font-weight: bold;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-top: 10px;
+        margin-top: 5px;
     }
     
-    /* Button Styling */
+    /* Mobile-optimized buttons */
     .stButton>button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
         border-radius: 12px;
-        padding: 12px 24px;
+        padding: 14px 20px;
         font-weight: 600;
         font-size: 16px;
+        width: 100%;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        -webkit-tap-highlight-color: transparent;
     }
     
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    .stButton>button:active {
+        transform: scale(0.95);
     }
     
-    /* Input Fields */
+    /* Mobile input fields */
     .stTextInput>div>div>input {
         background-color: #1e1e2f;
         border: 2px solid #667eea;
         border-radius: 12px;
         color: white;
-        padding: 12px;
+        padding: 14px;
+        font-size: 16px;
+        -webkit-appearance: none;
+    }
+    
+    /* Chat input - mobile optimized */
+    .stChatInput>div>div>input {
+        background-color: #1e1e2f;
+        border: 2px solid #667eea;
+        border-radius: 20px;
+        color: white;
+        padding: 12px 16px;
         font-size: 16px;
     }
     
-    .stTextInput>div>div>input:focus {
-        border-color: #764ba2;
-        box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
-    }
-    
-    /* Chat Messages */
+    /* Chat messages - mobile friendly */
     .chat-message {
-        padding: 16px 20px;
+        padding: 12px 16px;
         border-radius: 18px;
-        margin: 10px 0;
+        margin: 8px 0;
         animation: slideIn 0.3s ease;
         max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.5;
     }
     
     @keyframes slideIn {
@@ -282,67 +324,84 @@ st.markdown("""
         color: white;
     }
     
-    /* Sidebar Styling */
+    /* Sidebar - mobile friendly */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1a1a2e 0%, #0a0e27 100%);
     }
     
-    /* Conversation List */
+    /* Conversation list - touch optimized */
     .conversation-item {
         padding: 12px;
         margin: 5px 0;
         background: #1e1e2f;
         border-radius: 10px;
-        cursor: pointer;
         transition: all 0.2s ease;
         border: 1px solid transparent;
+        -webkit-tap-highlight-color: transparent;
     }
     
-    .conversation-item:hover {
-        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-        border: 1px solid #667eea;
-        transform: translateX(5px);
+    .conversation-item:active {
+        transform: scale(0.98);
     }
     
-    .conversation-item-active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: 1px solid #764ba2;
+    /* Mobile viewport adjustments */
+    @media only screen and (max-width: 768px) {
+        .logo {
+            font-size: 50px;
+        }
+        
+        .app-title {
+            font-size: 24px;
+        }
+        
+        .chat-message {
+            max-width: 90%;
+            font-size: 15px;
+        }
+        
+        .stButton>button {
+            padding: 12px 16px;
+            font-size: 15px;
+        }
     }
     
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+    /* Touch-friendly spacing */
+    .element-container {
+        margin-bottom: 0.5rem;
     }
     
-    ::-webkit-scrollbar-track {
-        background: #1a1a2e;
+    /* Remove default padding on mobile */
+    @media (max-width: 640px) {
+        .block-container {
+            padding: 0.5rem !important;
+        }
     }
     
-    ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 10px;
-    }
-    
-    /* Welcome Screen */
+    /* Welcome card - mobile optimized */
     .welcome-card {
         background: linear-gradient(135deg, #2d2d3f 0%, #1e1e2f 100%);
         border: 2px solid #667eea;
         border-radius: 20px;
-        padding: 40px;
+        padding: 30px 20px;
         text-align: center;
         margin: 20px auto;
-        max-width: 600px;
         box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
     }
     
-    /* Info Cards */
+    /* Info cards - mobile friendly */
     .info-card {
         background: linear-gradient(135deg, #2d2d3f 0%, #1e1e2f 100%);
         border-left: 4px solid #667eea;
-        padding: 15px;
+        padding: 12px;
         border-radius: 10px;
-        margin: 10px 0;
+        margin: 8px 0;
+        font-size: 14px;
+    }
+    
+    /* Smooth scrolling */
+    html {
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -361,29 +420,24 @@ if 'page' not in st.session_state:
     st.session_state.page = 'login'
 if 'current_conversation_id' not in st.session_state:
     st.session_state.current_conversation_id = None
-if 'chat_model' not in st.session_state:
-    st.session_state.chat_model = None
-if 'chat_session' not in st.session_state:
-    st.session_state.chat_session = None
 
 # ========================================
 # LOGIN PAGE
 # ========================================
 
 def show_login_page():
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([0.5, 2, 0.5])
     
     with col2:
-        # Logo and Title
         st.markdown("""
             <div class='logo-container'>
                 <div class='logo'>✖️</div>
                 <div class='app-title'>DavBel AI</div>
-                <p style='color: rgba(255,255,255,0.8); margin-top: 10px;'>Your Intelligent Assistant</p>
+                <p style='color: rgba(255,255,255,0.8); margin-top: 10px; font-size: 14px;'>Your Intelligent Assistant</p>
             </div>
         """, unsafe_allow_html=True)
         
-        st.markdown("<h2 style='text-align: center; margin-top: 30px;'>Welcome Back!</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin-top: 20px; font-size: 24px;'>Welcome Back!</h2>", unsafe_allow_html=True)
         st.markdown("---")
         
         username = st.text_input("👤 Username", placeholder="Enter your username", key="login_username")
@@ -418,25 +472,24 @@ def show_login_page():
 # ========================================
 
 def show_signup_page():
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([0.5, 2, 0.5])
     
     with col2:
-        # Logo and Title
         st.markdown("""
             <div class='logo-container'>
                 <div class='logo'>✖️</div>
                 <div class='app-title'>DavBel AI</div>
-                <p style='color: rgba(255,255,255,0.8); margin-top: 10px;'>Join the Future of AI</p>
+                <p style='color: rgba(255,255,255,0.8); margin-top: 10px; font-size: 14px;'>Join the Future of AI</p>
             </div>
         """, unsafe_allow_html=True)
         
-        st.markdown("<h2 style='text-align: center; margin-top: 30px;'>Create Your Account</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; margin-top: 20px; font-size: 24px;'>Create Account</h2>", unsafe_allow_html=True)
         st.markdown("---")
         
-        username = st.text_input("👤 Username", placeholder="Choose a unique username", key="signup_username")
+        username = st.text_input("👤 Username", placeholder="Choose a username", key="signup_username")
         email = st.text_input("📧 Email", placeholder="your.email@example.com", key="signup_email")
-        password = st.text_input("🔒 Password", type="password", placeholder="Choose a strong password", key="signup_password")
-        confirm_password = st.text_input("🔒 Confirm Password", type="password", placeholder="Re-enter your password", key="signup_confirm")
+        password = st.text_input("🔒 Password", type="password", placeholder="Choose a password", key="signup_password")
+        confirm_password = st.text_input("🔒 Confirm Password", type="password", placeholder="Re-enter password", key="signup_confirm")
         
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -457,7 +510,7 @@ def show_signup_page():
                         success, message = register_user(username, email, password)
                         if success:
                             st.success(message)
-                            st.info("✅ You can now login with your credentials!")
+                            st.info("✅ You can now login!")
                             st.balloons()
                             st.session_state.page = 'login'
                             st.rerun()
@@ -476,23 +529,15 @@ def show_signup_page():
 # ========================================
 
 def show_chat_page():
-    # Initialize AI model
-    if st.session_state.chat_model is None:
-        try:
-            st.session_state.chat_model = genai.GenerativeModel('models/gemini-2.5-flash')
-        except Exception as e:
-            st.error(f"Error initializing AI: {str(e)}")
-            return
-    
     # Sidebar
     with st.sidebar:
-        # Logo in sidebar
         st.markdown("""
-            <div style='text-align: center; padding: 20px;'>
-                <div style='font-size: 50px;'>✖️</div>
+            <div style='text-align: center; padding: 15px;'>
+                <div style='font-size: 40px;'>✖️</div>
                 <h2 style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                           -webkit-background-clip: text;
-                          -webkit-text-fill-color: transparent;'>
+                          -webkit-text-fill-color: transparent;
+                          font-size: 22px;'>
                     DavBel AI
                 </h2>
             </div>
@@ -501,15 +546,12 @@ def show_chat_page():
         st.markdown(f"<div class='info-card'><strong>👤 {st.session_state.username}</strong></div>", unsafe_allow_html=True)
         st.markdown("---")
         
-        # New Chat Button
         if st.button("➕ New Chat", use_container_width=True):
             st.session_state.current_conversation_id = None
-            st.session_state.chat_session = None
             st.rerun()
         
-        st.markdown("### 💬 Your Conversations")
+        st.markdown("### 💬 Chats")
         
-        # Load conversations
         conversations = get_user_conversations(st.session_state.user_id)
         
         if conversations:
@@ -520,27 +562,24 @@ def show_chat_page():
                 
                 with col1:
                     if st.button(
-                        f"{'📍' if is_active else '💭'} {conv['title'][:30]}...",
+                        f"{'📍' if is_active else '💭'} {conv['title'][:25]}...",
                         key=f"conv_{conv['id']}",
                         use_container_width=True
                     ):
                         st.session_state.current_conversation_id = conv['id']
-                        st.session_state.chat_session = None
                         st.rerun()
                 
                 with col2:
-                    if st.button("🗑️", key=f"del_{conv['id']}", help="Delete conversation"):
+                    if st.button("🗑️", key=f"del_{conv['id']}"):
                         delete_conversation(conv['id'])
                         if st.session_state.current_conversation_id == conv['id']:
                             st.session_state.current_conversation_id = None
-                            st.session_state.chat_session = None
                         st.rerun()
         else:
-            st.info("No conversations yet. Start a new chat!")
+            st.info("No chats yet!")
         
         st.markdown("---")
         
-        # Logout button
         if st.button("🚪 Logout", use_container_width=True):
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
@@ -548,20 +587,20 @@ def show_chat_page():
     
     # Main chat area
     st.markdown("""
-        <div style='text-align: center; padding: 20px;'>
+        <div style='text-align: center; padding: 15px;'>
             <h1 style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                       -webkit-background-clip: text;
-                      -webkit-text-fill-color: transparent;'>
+                      -webkit-text-fill-color: transparent;
+                      font-size: 26px;'>
                 Chat with DavBel AI ✖️
             </h1>
         </div>
     """, unsafe_allow_html=True)
     
-    # Display messages or welcome screen
+    # Display messages
     if st.session_state.current_conversation_id:
         messages = get_conversation_messages(st.session_state.current_conversation_id)
         
-        # Display messages
         for msg in messages:
             if msg['role'] == 'user':
                 st.markdown(f"""
@@ -578,55 +617,34 @@ def show_chat_page():
                     </div>
                 """, unsafe_allow_html=True)
     else:
-        # Welcome screen
         st.markdown("""
             <div class='welcome-card'>
-                <div style='font-size: 60px; margin-bottom: 20px;'>✖️</div>
-                <h2>Welcome to DavBel AI!</h2>
-                <p style='font-size: 18px; color: rgba(255,255,255,0.7); margin-top: 20px;'>
-                    I'm here to help you with anything you need. Ask me questions, get creative ideas,
-                    solve problems, or just have a conversation!
+                <div style='font-size: 50px; margin-bottom: 15px;'>✖️</div>
+                <h2 style='font-size: 22px;'>Welcome to DavBel AI!</h2>
+                <p style='font-size: 16px; color: rgba(255,255,255,0.7); margin-top: 15px;'>
+                    I'm powered by Groq - fast, smart, and unlimited!
                 </p>
-                <p style='margin-top: 30px; color: #667eea;'>
-                    💡 Start by typing a message below
+                <p style='margin-top: 20px; color: #667eea; font-size: 14px;'>
+                    💡 Start chatting below
                 </p>
             </div>
         """, unsafe_allow_html=True)
     
     # Chat input
-    user_input = st.chat_input("Type your message here...")
+    user_input = st.chat_input("Type your message...")
     
     if user_input:
-        # Create new conversation if needed
         if not st.session_state.current_conversation_id:
             title = generate_chat_title(user_input)
             conv_id = create_chat_conversation(st.session_state.user_id, title)
             st.session_state.current_conversation_id = conv_id
         
-        # Initialize chat session if needed
-        if st.session_state.chat_session is None:
-            # Load previous messages for context
-            messages = get_conversation_messages(st.session_state.current_conversation_id)
-            history = []
-            for msg in messages:
-                history.append({
-                    "role": msg['role'],
-                    "parts": [msg['content']]
-                })
-            
-            st.session_state.chat_session = st.session_state.chat_model.start_chat(history=history)
-        
-        # Save user message
         save_message(st.session_state.current_conversation_id, "user", user_input)
         
-        # Get AI response
         try:
-            response = st.session_state.chat_session.send_message(user_input)
-            ai_response = response.text
-            
-            # Save AI response
+            messages = get_conversation_messages(st.session_state.current_conversation_id)
+            ai_response = chat_with_groq(messages, user_input)
             save_message(st.session_state.current_conversation_id, "model", ai_response)
-            
             st.rerun()
             
         except Exception as e:
